@@ -5,6 +5,7 @@
 #include <stdio.h>
 #define DEFAULT_PORT "27015"
 
+namespace ServerSock {
 int initServerSocket(SOCKET& listenSocket, addrinfo*& result);
 int bindSocket(SOCKET& listenSocket, addrinfo* result);
 int listenSocket(SOCKET& socket);
@@ -21,6 +22,9 @@ int main(){
 
     SOCKET listenSocket = INVALID_SOCKET;
     struct addrinfo *result = NULL;
+    char[500] globalStateObject;
+    std::memset(globalStateObject, '\0', sizeof(globalStateObject));
+
 
     if (initServerSocket(listenSocket, result) != 0) {
         WSACleanup();
@@ -41,7 +45,7 @@ int main(){
         WSACleanup();
         return 1;
     }
-
+    cout << "Server socket setup successful!" << endl;
     return 0;
 }
 
@@ -67,7 +71,7 @@ int initServerSocket(SOCKET& listenSocket, addrinfo*& result){
         WSACleanup();
         return 1;
     }
-    return 0;
+    return l;
 }
 
 int bindSocket(SOCKET& listenSocket, addrinfo* result){
@@ -101,19 +105,52 @@ int acceptSocketConnections(SOCKET& socket){
         closesocket(socket);
         WSACleanup();
         return 1;
+    } if clientSocket != INVALID_SOCKET {
+        std::cout << "Client socket accepted."<<  << std::endl;
     }
     return receiveFromSocket(clientSocket);
 }
 
-int receiveFromSocket(SOCKET& recvsocket){
+int receiveFromSocket(SOCKET& recvsocket, char[500] globalObjectState){
     int bufferLen = 530;
     char buffer[bufferLen];
     int result = recv(recvsocket, buffer, bufferLen, 0);
+    std::span<char> subspan(buffer, 3)
+    std::span<char> response = subspan;
+    
+    if (strcmp(response, "GET") == 0){
+        std::span<char> subspan(buffer + 3, 500);
+        std::span<char> remainderstring = subspan;
+        std::cout << "" << remainderstring << std::endl;
+        send(recvsocket, globalObjectState, 0);
+    }
+
+    if (strcmp(response, "PUT") == 0){
+        //assume space.
+        std::span<char> subspan(buffer + 4, 500);
+        std::span<char> remainderstring = subspan;
+        char[500] response = "PUT request received."
+        send(recvsocket, response, 0);
+        *globalObjectState = remainderstring;
+        std::cout << "" << remainderstring << std::endl;
+    }
+    if (strcmp(response, "DEL") == 0){
+        char[500] response = "DEL request received."
+        send(recvsocket, response, 0);
+        globalObjectState = NULL;
+    }
+    if (strcmp(response, "ADD") == 0){
+        //assume space for command
+        std::span<char> subspan(buffer + 4, 500);
+        std::span<char> remainderstring = subspan;
+        std::cout << "" << remainderstring << std::endl;
+    }
     if (result <= 0){
         std::cout << "FRICK, RECVFROM ERROR, WE GOT TROUBLE!" << std::endl;
         closesocket(recvsocket);
         WSACleanup();
         return 1;
+
     } else {
         const char* response = "Response received.";
         int iResultResponseSocket = send(recvsocket, response, strlen(response), 0);
@@ -126,4 +163,6 @@ int receiveFromSocket(SOCKET& recvsocket){
     closesocket(recvsocket);
     WSACleanup();
     return 0;
+}
+
 }

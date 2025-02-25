@@ -5,8 +5,9 @@
 #include <stdio.h>
 #define DEFAULT_PORT "27015"
 
-// Function declarations
-SOCKET initClientSocket(int argc, char* argv[], addrinfo*& result, addrinfo*& ptr, addrinfo* hints);
+
+namespace Client {
+SOCKET initClientSocket(addrinfo*& result, addrinfo*& ptr, addrinfo* hints);
 int connectSocket(SOCKET& connectionSocket, addrinfo* ptr);
 int sendToServer(SOCKET& connectionSocket, char mail[500]);
 int shutDownConnectionSocket(SOCKET& connectionSocket);
@@ -29,7 +30,7 @@ int main(){
     hints.ai_protocol = IPPROTO_TCP;
     hints.ai_flags = AI_PASSIVE;
 
-    SOCKET connectsocket = initClientSocket(1, argv, &result, &ptr, &hints);
+    SOCKET connectsocket = initClientSocket(1, argv, result, ptr, &hints);
     if (connectsocket == INVALID_SOCKET) {
         WSACleanup();
         return 1;
@@ -40,21 +41,15 @@ int main(){
         return 1;
     }
 
-    char message[500] = "Hello, Server!";
-    if (sendToServer(connectsocket, message) != 0) {
-        WSACleanup();
-        return 1;
-    }
-
     if (shutDownConnectionSocket(connectsocket) != 0) {
         WSACleanup();
         return 1;
     }
-
+    cout << "Client socket setup successful!" << endl;
     return 0;
 }
 
-SOCKET initClientSocket(int argc, char* argv[], addrinfo result, addrinfo ptr, addrinfo hints){
+SOCKET initClientSocket(addrinfo*& result, addrinfo*& ptr, addrinfo* hints){
     ZeroMemory(hints, sizeof(*hints));
     int iResult = getaddrinfo(argv[0], DEFAULT_PORT, hints, &result);
     if (iResult != 0){
@@ -90,7 +85,7 @@ int connectSocket(SOCKET& connectionSocket, addrinfo* ptr){
     return 0;
 }
 
-int sendToServer(SOCKET& connectionSocket, char mail[500]){
+int sendToServer(SOCKET& connectionSocket, char[500] mail){
     int iResult;
     char receivingBuffer[500];
     iResult = send(connectionSocket, mail, 500, 0);
@@ -102,27 +97,6 @@ int sendToServer(SOCKET& connectionSocket, char mail[500]){
         return 1;
     }
     std::cout << "Message sent successfully!" << std::endl;
-
-    iResult = shutdown(connectionSocket, SD_SEND);
-    if (iResult == SOCKET_ERROR) {
-        std::cout << "Shutdown failed: " << WSAGetLastError() << std::endl;
-        closesocket(connectionSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    do {
-        iResult = recv(connectionSocket, receivingBuffer, 500, 0);
-        if (iResult > 0){
-            printf("We got this result from the server: %s\n", receivingBuffer);
-        } else if (iResult == 0){
-            std::cout << "Connection has been closed." << std::endl;
-        } else {
-            std::cout << "Error in receiving message: " << WSAGetLastError() << std::endl;
-        }   
-    } while (iResult > 0);
-
-    return 0;
 }
 
 int shutDownConnectionSocket(SOCKET& connectionSocket){
@@ -137,4 +111,4 @@ int shutDownConnectionSocket(SOCKET& connectionSocket){
     WSACleanup();
     return 0;
 }
-
+}
